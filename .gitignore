@@ -1,0 +1,12 @@
+# Python / Backend
+venv/
+__pycache__/
+*.pyc
+
+# Node / Frontend
+node_modules/
+dist/
+.DS_Store
+
+# Security - NEVER UPLOAD KEYS
+.env

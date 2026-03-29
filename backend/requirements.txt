@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+opencv-python
+numpy
+shapely
+networkx
+pytesseract
+Pillow
+anthropic
+openai
+python-dotenv
+pydantic
+scipy

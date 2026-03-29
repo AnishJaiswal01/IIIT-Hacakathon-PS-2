@@ -1,0 +1,51 @@
+{
+  "AAC Blocks": {
+    "cost": "low",
+    "strength": "medium",
+    "durability": "high",
+    "best_use": "Partition walls",
+    "suitable_for": ["partition_walls"]
+  },
+  "Red Brick": {
+    "cost": "medium",
+    "strength": "high",
+    "durability": "medium",
+    "best_use": "Load-bearing walls",
+    "suitable_for": ["load_bearing_walls", "exterior_walls"]
+  },
+  "RCC": {
+    "cost": "high",
+    "strength": "very_high",
+    "durability": "very_high",
+    "best_use": "Columns, slabs",
+    "suitable_for": ["columns", "floor_slab", "load_bearing_walls"]
+  },
+  "Steel Frame": {
+    "cost": "high",
+    "strength": "very_high",
+    "durability": "very_high",
+    "best_use": "Long spans (>5m)",
+    "suitable_for": ["columns", "floor_slab", "exterior_walls"]
+  },
+  "Hollow Concrete Block": {
+    "cost": "low-medium",
+    "strength": "medium",
+    "durability": "medium",
+    "best_use": "Non-structural walls",
+    "suitable_for": ["partition_walls", "exterior_walls"]
+  },
+  "Fly Ash Brick": {
+    "cost": "low",
+    "strength": "medium-high",
+    "durability": "high",
+    "best_use": "General walling",
+    "suitable_for": ["partition_walls", "load_bearing_walls", "exterior_walls"]
+  },
+  "Precast Concrete Panel": {
+    "cost": "medium-high",
+    "strength": "high",
+    "durability": "very_high",
+    "best_use": "Structural walls, slabs",
+    "suitable_for": ["exterior_walls", "load_bearing_walls", "floor_slab"]
+  }
+}
