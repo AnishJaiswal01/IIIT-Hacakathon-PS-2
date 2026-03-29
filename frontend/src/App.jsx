@@ -89,7 +89,7 @@ export default function App() {
             </div>
           )}
 
-          {analysis && !loading && <ResultsTabs analysis={analysis} />}
+          {analysis && !loading && <ResultsTabs analysis={analysis} file={file} />}
         </section>
         
       </main>

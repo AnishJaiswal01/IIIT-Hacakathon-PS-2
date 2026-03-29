@@ -112,7 +112,7 @@ class ParsedFloorPlan(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class Wall3D(BaseModel):
-    """Single wall ready for Three.js BoxGeometry."""
+    """Single wall ready for Three.js ExtrudeGeometry."""
     id: str
     wall_type: str          # exterior | interior_load_bearing | partition
     is_load_bearing: bool
@@ -120,6 +120,11 @@ class Wall3D(BaseModel):
     center_x: float
     center_y: float         # always WALL_HEIGHT / 2
     center_z: float
+    # Raw endpoints in world-space (for ExtrudeGeometry)
+    start_x: float
+    start_z: float
+    end_x: float
+    end_z: float
     # Box dimensions in metres
     length: float
     height: float           # always WALL_HEIGHT (3 m)
@@ -137,6 +142,8 @@ class Slab3D(BaseModel):
     room_name: str
     center_x: float
     center_z: float
+    centroid_x: float       # polygon centroid for accurate label placement
+    centroid_z: float
     width: float
     depth: float
     color_index: int        # index into ROOM_COLORS on frontend
@@ -149,6 +156,10 @@ class Opening3D(BaseModel):
     center_x: float
     center_y: float
     center_z: float
+    width: float
+    height: float
+    thickness: float
+    rotation_y: float
 
 
 class ThreeDModel(BaseModel):

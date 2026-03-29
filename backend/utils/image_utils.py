@@ -66,13 +66,10 @@ def pixel_length_to_metres(
     assumed_building_width_m: float = 15.0,
 ) -> float:
     """
-    Estimate real-world length (m) from pixel length.
-    Uses the assumption that the building spans assumed_building_width_m across
-    the full image width. Adjust if a scale bar is detected.
+    Estimate real-world length (m) strictly using 1px = 0.05m ratio.
     """
-    if img_w == 0:
-        return 0.0
-    return round((pixel_length / img_w) * assumed_building_width_m, 2)
+    from config import PIXEL_TO_METRE
+    return round(pixel_length * PIXEL_TO_METRE, 2)
 
 
 def draw_debug_overlay(

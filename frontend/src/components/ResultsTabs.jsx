@@ -4,12 +4,14 @@ import RoomCard from "./RoomCard";
 import WallCard from "./WallCard";
 import MaterialCard from "./MaterialCard";
 import ConcernCard from "./ConcernCard";
+import SpatialAnalytics from "./SpatialAnalytics";
 
-export default function ResultsTabs({ analysis }) {
+export default function ResultsTabs({ analysis, file }) {
   const [activeTab, setActiveTab] = useState("3d");
 
   const tabs = [
     { id: "3d", label: "3D Viewer" },
+    { id: "analytics", label: "Spatial Analytics" },
     { id: "rooms", label: `Rooms (${analysis.rooms?.length || 0})` },
     { id: "walls", label: `Walls (${analysis.walls?.length || 0})` },
     { id: "materials", label: "Materials" },
@@ -35,7 +37,8 @@ export default function ResultsTabs({ analysis }) {
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", paddingRight: 8 }}>
-        {activeTab === "3d" && <ThreeViewer analysis={analysis} />}
+        {activeTab === "3d" && <ThreeViewer analysis={analysis} file={file} />}
+        {activeTab === "analytics" && <SpatialAnalytics analysis={analysis} />}
         {activeTab === "rooms" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
             {analysis.rooms?.map(room => <RoomCard key={room.id} room={room} />)}

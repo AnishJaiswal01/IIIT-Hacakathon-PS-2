@@ -35,7 +35,7 @@ from config import (
     HOUGH_RHO, HOUGH_THETA_DEG,
     HOUGH_THRESHOLD, HOUGH_MIN_LINE_LENGTH, HOUGH_MAX_LINE_GAP,
     ROOM_MIN_AREA_FRACTION, ROOM_MAX_AREA_FRACTION,
-    ASSUMED_BUILDING_WIDTH_M,
+    ASSUMED_BUILDING_WIDTH_M, PIXEL_TO_METRE,
 )
 from utils.image_utils import (
     normalize_point,
@@ -85,7 +85,36 @@ def _preprocess(img: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     binary_thresh is inverted so room interiors are white (255).
     """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    blurred = cv2.GaussianBlur(gray, (GAUSSIAN_BLUR_K, GAUSSIAN_BLUR_K), 0)
+    cleaned_gray = gray.copy()
+
+    # --- TEXT ERASURE PASS (Inpainting) ---
+    if TESSERACT_AVAILABLE:
+        try:
+            data = pytesseract.image_to_data(
+                gray, output_type=pytesseract.Output.DICT, config="--psm 11"
+            )
+            for i in range(len(data['text'])):
+                conf = int(data['conf'][i])
+                text = data['text'][i].strip()
+                
+                # If valid text detected, paint it solid white so Canny/Hough ignores it
+                if conf > 25 and len(text) >= 1:
+                    x = data['left'][i]
+                    y = data['top'][i]
+                    w = data['width'][i]
+                    h = data['height'][i]
+                    
+                    pad = 6
+                    cv2.rectangle(
+                        cleaned_gray, 
+                        (max(0, x - pad), max(0, y - pad)), 
+                        (x + w + pad, y + h + pad), 
+                        255, -1
+                    )
+        except Exception:
+            pass
+
+    blurred = cv2.GaussianBlur(cleaned_gray, (GAUSSIAN_BLUR_K, GAUSSIAN_BLUR_K), 0)
     # Adaptive threshold handles uneven lighting better than global
     binary = cv2.adaptiveThreshold(
         blurred, 255,
@@ -105,6 +134,8 @@ def _detect_walls_px(
 ) -> list[tuple[int, int, int, int]]:
     """
     Run Canny + HoughLinesP to get raw wall line segments in pixel coords.
+    Applies a post-detection straightening pass — snapping near-horizontal lines
+    to exactly 0° (y1==y2) and near-vertical lines to exactly 90° (x1==x2).
     Returns list of (x1, y1, x2, y2).
     """
     edges = cv2.Canny(blurred, CANNY_LOW, CANNY_HIGH, apertureSize=3)
@@ -127,12 +158,16 @@ def _detect_walls_px(
     result: list[tuple[int, int, int, int]] = []
     for line in lines:
         x1, y1, x2, y2 = line[0]
-        # Keep only near-horizontal or near-vertical lines
-        # (floor plans are orthogonal; diagonal lines = noise)
-        if is_horizontal(x1, y1, x2, y2, tol=15.0) or is_vertical(
-            x1, y1, x2, y2, tol=15.0
-        ):
-            result.append((int(x1), int(y1), int(x2), int(y2)))
+
+        if is_horizontal(x1, y1, x2, y2, tol=15.0):
+            # Snap to perfect horizontal: average the y coords
+            avg_y = int((y1 + y2) / 2)
+            result.append((int(x1), avg_y, int(x2), avg_y))
+        elif is_vertical(x1, y1, x2, y2, tol=15.0):
+            # Snap to perfect vertical: average the x coords
+            avg_x = int((x1 + x2) / 2)
+            result.append((avg_x, int(y1), avg_x, int(y2)))
+        # Diagonal lines (noise) are silently dropped
 
     return result
 
@@ -223,12 +258,12 @@ def _detect_rooms_px(
 def _detect_openings_px(
     gray: np.ndarray,
     binary: np.ndarray,
-) -> list[tuple[int, int, str]]:
+) -> list[tuple[int, int, str, float]]:
     """
-    Detect doors (arc symbols) and windows (double parallel lines).
-    Returns list of (cx, cy, type_str).
+    Detect doors (arc symbols) and windows (double parallel lines) using gap analysis.
+    Returns list of (cx, cy, type_str, pixel_width).
     """
-    openings: list[tuple[int, int, str]] = []
+    openings: list[tuple[int, int, str, float]] = []
     h, w = gray.shape
 
     # --- Doors: Hough circles for arc detection ---
@@ -248,24 +283,25 @@ def _detect_openings_px(
         for x, y, r in circles[0]:
             cx, cy = int(x), int(y)
             if 0 <= cx < w and 0 <= cy < h:
-                openings.append((cx, cy, "door"))
+                openings.append((cx, cy, "door", float(r)))
 
-    # --- Windows: look for short parallel line pairs on exterior region ---
-    # Windows appear as two short parallel lines close together.
-    # We use contour bounding boxes with very thin aspect ratios as proxy.
+    # --- Windows: look for small structural gaps or cut-outs inside walls ---
+    # Convert to RETR_LIST to catch internal bounding shapes like those in thick walls
     contours, _ = cv2.findContours(
-        binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
     )
     for cnt in contours:
         bx, by, bw, bh = cv2.boundingRect(cnt)
         area = cv2.contourArea(cnt)
-        if area < 20 or area > 500:
+        # Broaden area constraint to catch glass panes inside thick gaps
+        if area < 10 or area > 3000:
             continue
         aspect = bw / (bh + 1e-3)
-        # Window symbols are very elongated
-        if aspect > 5.0 or aspect < 0.2:
+        # Use a more relaxed multi-class aperture ratio threshold
+        if aspect > 2.0 or aspect < 0.5:
             cx, cy = bx + bw // 2, by + bh // 2
-            openings.append((cx, cy, "window"))
+            op_w = float(max(bw, bh))
+            openings.append((cx, cy, "window", op_w))
 
     return openings
 
@@ -416,7 +452,7 @@ def parse_floor_plan(img: np.ndarray) -> ParsedFloorPlan:
 
     # ── Build Opening objects ────────────────────────────────────────────────
     openings: list[Opening] = []
-    for i, (cx, cy, op_type) in enumerate(openings_px):
+    for i, (cx, cy, op_type, px_width) in enumerate(openings_px):
         nx, ny = normalize_point(cx, cy, img_w, img_h)
 
         # Find nearest wall
@@ -435,13 +471,17 @@ def parse_floor_plan(img: np.ndarray) -> ParsedFloorPlan:
         is_ext = (nx < margin or nx > 1 - margin or
                   ny < margin or ny > 1 - margin)
 
+        opening_width_m = pixel_length_to_metres(px_width, img_w, ASSUMED_BUILDING_WIDTH_M)
+        # Ensure a minimum practical width (e.g. 0.6m) and maximum realistic window span (4m)
+        opening_width_m = max(0.6, min(opening_width_m, 4.0))
+
         openings.append(Opening(
             id=f"opening_{i+1}",
             type=op_type,
             location=Point(x=nx, y=ny),
             wall_id=nearest_wall_id,
             connects_rooms=[],
-            estimated_width_m=0.9 if op_type == "door" else 1.2,
+            estimated_width_m=round(opening_width_m, 2),
             is_exterior=is_ext,
         ))
 
