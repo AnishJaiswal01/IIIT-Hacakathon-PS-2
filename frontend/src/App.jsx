@@ -4,8 +4,10 @@ import UploadPanel from "./components/UploadPanel";
 import PipelineSteps from "./components/PipelineSteps";
 import ResultsTabs from "./components/ResultsTabs";
 import JsonViewer from "./components/JsonViewer";
+import LoginPage from "./components/LoginPage";
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -24,6 +26,10 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  if (!isLoggedIn) {
+    return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+  }
 
   return (
     <div style={{ 

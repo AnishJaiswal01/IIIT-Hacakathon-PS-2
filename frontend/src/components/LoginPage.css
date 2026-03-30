@@ -1,0 +1,172 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+.login-page-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #0A0F1A;
+  /* Subtle, blurred radial meshes for ambient tech glow */
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(34, 211, 238, 0.12), transparent 40%),
+    radial-gradient(circle at 85% 30%, rgba(59, 130, 246, 0.12), transparent 40%);
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-card {
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: fadeSlideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #f8fafc;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.logo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22d3ee 0%, #3b82f6 100%);
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.3);
+}
+
+.logo-icon {
+  color: #0f172a;
+}
+
+.welcome-title {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 24px;
+}
+
+.input-icon {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  transition: color 0.3s ease;
+  pointer-events: none;
+}
+
+.lux-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #334155;
+  color: #f8fafc;
+  padding: 12px 12px 12px 32px;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  outline: none;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.lux-input::placeholder {
+  color: #475569;
+}
+
+/* Electric blue accent on focus */
+.lux-input:focus {
+  border-bottom-color: #22d3ee;
+}
+
+.lux-input:focus + .input-icon, 
+.lux-input:not(:placeholder-shown) + .input-icon {
+  color: #22d3ee;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
+}
+
+.forgot-link {
+  color: #94a3b8;
+  font-size: 13px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgot-link:hover {
+  color: #22d3ee;
+}
+
+.primary-btn {
+  width: 100%;
+  background: #22d3ee;
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Inter', system-ui, sans-serif;
+  box-shadow: 0 4px 12px rgba(34, 211, 238, 0.2);
+}
+
+.primary-btn:hover {
+  background: #67e8f9;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(34, 211, 238, 0.4);
+}
+
+.footer-link {
+  text-align: center;
+  margin-top: 32px;
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.footer-link a {
+  color: #22d3ee;
+  text-decoration: none;
+  font-weight: 500;
+  margin-left: 6px;
+  transition: color 0.2s ease;
+}
+
+.footer-link a:hover {
+  color: #67e8f9;
+}
