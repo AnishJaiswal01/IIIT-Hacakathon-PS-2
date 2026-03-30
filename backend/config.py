@@ -31,9 +31,9 @@ CANNY_HIGH: int = 150
 # ── HoughLinesP ───────────────────────────────────────────────────────────────
 HOUGH_RHO: float = 1.0
 HOUGH_THETA_DEG: float = 1.0       # degrees — converted to radians in code
-HOUGH_THRESHOLD: int = 40
-HOUGH_MIN_LINE_LENGTH: int = 15    # pixels — shorter lines discarded
-HOUGH_MAX_LINE_GAP: int = 20
+HOUGH_THRESHOLD: int = 20          # HALVED: capture faint lines
+HOUGH_MIN_LINE_LENGTH: int = 7     # HALVED: preserve short closet partitions
+HOUGH_MAX_LINE_GAP: int = 10       # HALVED: prevent aggressive merging
 
 # ── Room / contour detection ──────────────────────────────────────────────────
 # Minimum room area as fraction of total image area
@@ -53,9 +53,9 @@ THIN_WALL_PX: int = 4              # pixel width <= this → thin (partition)
 SPINE_FRACTION: float = 0.55
 
 # ── 3D model ──────────────────────────────────────────────────────────────────
-WALL_HEIGHT_M: float = 3.0         # standard floor height metres
+WALL_HEIGHT_M: float = 2.5         # standard floor height metres
 SCALE_FACTOR: float = 20.0         # normalised 0-1 → Three.js units
-ASSUMED_BUILDING_WIDTH_M: float = 15.0   # used when no scale bar detected
+ASSUMED_BUILDING_WIDTH_M: float = 20.0   # physical building footprint width in metres
 PIXEL_TO_METRE: float = 0.05       # deterministic fallback: 1px = 0.05m
 VERTEX_SNAP_THRESHOLD_M: float = 0.05  # snap wall endpoints closer than this
 

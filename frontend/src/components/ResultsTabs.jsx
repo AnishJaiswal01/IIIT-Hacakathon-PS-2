@@ -41,7 +41,7 @@ export default function ResultsTabs({ analysis, file }) {
         {activeTab === "analytics" && <SpatialAnalytics analysis={analysis} />}
         {activeTab === "rooms" && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 12 }}>
-            {analysis.rooms?.map(room => <RoomCard key={room.id} room={room} />)}
+            {analysis.rooms?.map((room, idx) => <RoomCard key={room.id} room={room} index={idx} />)}
           </div>
         )}
         {activeTab === "walls" && (

@@ -221,8 +221,12 @@ def build_3d_model(parsed: ParsedFloorPlan) -> ThreeDModel:
     Takes a ParsedFloorPlan (output of Stage 2) and returns a ThreeDModel.
     Performs precise 1D physical segmentation of walls resolving "Empty Portals".
     """
-    scale_x = parsed.image_width_px * PIXEL_TO_METRE
-    scale_z = parsed.image_height_px * PIXEL_TO_METRE
+    # --- DECOUPLE PIXEL SCALE TO FIX SQUASHED VERTICAL BUG ---
+    # Map the entire model to exactly ASSUMED_BUILDING_WIDTH_M (20.0m).
+    # This guarantees the geometry depth of 2.5m is always architecturally
+    # proportionate to the footprint, regardless of the uploaded image resolution!
+    scale_x = ASSUMED_BUILDING_WIDTH_M
+    scale_z = ASSUMED_BUILDING_WIDTH_M * (parsed.image_height_px / parsed.image_width_px)
 
     base_walls_3d = [_build_wall_3d(w, i, scale_x, scale_z) for i, w in enumerate(parsed.walls)]
     slabs    = [_build_slab(r, i, scale_x, scale_z)    for i, r in enumerate(parsed.rooms)]
@@ -312,10 +316,19 @@ def build_3d_model(parsed: ParsedFloorPlan) -> ThreeDModel:
     # --- VERTEX SNAPPING PASS (manifold wall corners, no Z-fighting) ---
     segmented_walls_3d = _snap_wall_endpoints(segmented_walls_3d)
 
+    # --- BASEPLATE POLYGON PROPAGATION (Triangulation Fix) ---
+    baseplate_3d = []
+    for pt in parsed.baseplate_polygon:
+        # Map normalized [0, 1] polygon outline directly into the 20.0m scaled building area
+        bp_x = pt.x * scale_x
+        bp_z = pt.y * scale_z
+        baseplate_3d.append([round(bp_x, 4), round(bp_z, 4)])
+
     return ThreeDModel(
         scale=PIXEL_TO_METRE,
         wall_height=WALL_HEIGHT_M,
         walls_3d=segmented_walls_3d,
         slabs=slabs,
         openings_3d=openings_3d,
+        baseplate_polygon=baseplate_3d,
     )

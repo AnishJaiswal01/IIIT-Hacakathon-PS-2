@@ -102,6 +102,7 @@ class ParsedFloorPlan(BaseModel):
     walls: list[Wall] = Field(default_factory=list)
     rooms: list[Room] = Field(default_factory=list)
     openings: list[Opening] = Field(default_factory=list)
+    baseplate_polygon: list[Point] = Field(default_factory=list)
     estimated_total_area_sqm: float = Field(default=0.0)
     # Flag set to True when OpenCV fails and manual coords are used
     used_fallback: bool = False
@@ -172,6 +173,7 @@ class ThreeDModel(BaseModel):
     walls_3d: list[Wall3D] = Field(default_factory=list)
     slabs: list[Slab3D] = Field(default_factory=list)
     openings_3d: list[Opening3D] = Field(default_factory=list)
+    baseplate_polygon: list[list[float]] = Field(default_factory=list)  # list of [x, z] coords
 
 
 # ─────────────────────────────────────────────────────────────────────────────

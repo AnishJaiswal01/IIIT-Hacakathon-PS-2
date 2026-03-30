@@ -4,7 +4,7 @@ import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer
 import * as BufferGeometryUtils from "three/addons/utils/BufferGeometryUtils.js";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const WALL_HEIGHT = 3.0;
+const WALL_HEIGHT = 2.5;
 
 // Unified material palette for visual parity
 const WALL_COLOR = 0x1e293b;  // Slate/Charcoal
@@ -55,10 +55,11 @@ export default function ThreeViewer({ analysis, file }) {
     // Adjusted camera for better overview
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 1000);
     
-    // Scale derived from PIXEL_TO_METRE ratio (1 px = 0.05m)
-    const scaleFactor = 0.05; 
-    const mapWidthM = (analysis.image_width_px || 800) * scaleFactor;
-    const mapHeightM = (analysis.image_height_px || 600) * scaleFactor;
+    // DECOUPLED FROM PIXELS:
+    // Scale building mapping to exactly 20.0 physical units
+    const mapWidthM = 20.0;
+    const aspect = (analysis.image_height_px || 600) / (analysis.image_width_px || 800);
+    const mapHeightM = 20.0 * aspect;
     
     // Default look target is the center of the structure
     const target = new THREE.Vector3(mapWidthM / 2, 0, mapHeightM / 2);
@@ -67,10 +68,11 @@ export default function ThreeViewer({ analysis, file }) {
     camera.lookAt(target);
 
     // Lighting: High-Visibility Setup
-    scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.9));
     
+    // Top-down intense directional lighting to highlight the new polished floor material
     const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-    sun.position.set(5, 10, 5);
+    sun.position.set(mapWidthM / 2, 20, mapHeightM / 2 + 5);
     sun.castShadow = true;
     sun.shadow.mapSize.width = 2048;
     sun.shadow.mapSize.height = 2048;
@@ -155,14 +157,15 @@ export default function ThreeViewer({ analysis, file }) {
       shape.lineTo(start_x - px * half, start_z - pz * half);
       shape.closePath();
 
+      const fixedWallHeight = 2.5;
       const geo = new THREE.ExtrudeGeometry(shape, {
-        depth: height || WALL_HEIGHT,
+        depth: fixedWallHeight,
         bevelEnabled: false,
       });
       // Rotate +90deg on X to map 2D Shape (X, Y) to World (X, Z).
       // This sends the extrusion depth down into -Y. Translate back up by height.
       geo.rotateX(Math.PI / 2);
-      geo.translate(0, height || WALL_HEIGHT, 0);
+      geo.translate(0, fixedWallHeight, 0);
       
       wallGeometries.push(geo);
     });
@@ -231,40 +234,69 @@ export default function ThreeViewer({ analysis, file }) {
       interactable.push(mesh);
     });
 
+    // ── Unified Baseplate (Floor Parity Fix) ─────────────────────────────────
+    const baseplatePts = analysis.model_3d?.baseplate_polygon || [];
+    if (baseplatePts.length > 2 && !showOverlay) {
+      const shape = new THREE.Shape();
+      shape.moveTo(baseplatePts[0][0], baseplatePts[0][1]);
+      for (let i = 1; i < baseplatePts.length; i++) {
+        shape.lineTo(baseplatePts[i][0], baseplatePts[i][1]);
+      }
+      shape.closePath();
+
+      // Generates a proper single 2D flat geometric mesh without overlapping doorways
+      const baseGeo = new THREE.ShapeGeometry(shape);
+      
+      // Map 2D Shape (X, Y) up to 3D World (X, Z)
+      baseGeo.rotateX(Math.PI / 2);
+      
+      // Procedural Terrazzo / Polished Concrete Noise Map Generator
+      const noiseSize = 512;
+      const cvs = document.createElement("canvas");
+      cvs.width = noiseSize; cvs.height = noiseSize;
+      const ctx = cvs.getContext("2d");
+      const imgData = ctx.createImageData(noiseSize, noiseSize);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        // Generate very subtle high-frequency architectural noise
+        const val = 245 + Math.random() * 10;
+        imgData.data[i] = val;
+        imgData.data[i+1] = val;
+        imgData.data[i+2] = val;
+        imgData.data[i+3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      const floorTex = new THREE.CanvasTexture(cvs);
+      floorTex.wrapS = THREE.RepeatWrapping;
+      floorTex.wrapT = THREE.RepeatWrapping;
+      floorTex.repeat.set(15, 15);
+      
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0xfcfcfc,          // Carrara Marble Off-White
+        roughness: 0.2,           // Very polished surface
+        metalness: 0.05,          // Slight sheen reflection
+        map: floorTex,            // Subtle Albedo texture
+        bumpMap: floorTex,        // Micro-texture normal relief
+        bumpScale: 0.001,         // Invisible except for speculative glints
+      });
+      const baseMesh = new THREE.Mesh(baseGeo, baseMat);
+      // Place exactly at Z=0 (actually Y= -0.01 in Three.js coordinates to prevent Z-fighting)
+      baseMesh.position.set(0, -0.01, 0);
+      baseMesh.receiveShadow = true;
+      baseMesh.userData = {
+        type: "Foundation Baseplate",
+        classification: "Continuous Floor",
+        dimensions: "Unified Mesh"
+      };
+      scene.add(baseMesh);
+      interactable.push(baseMesh);
+    }
+    
     // ── Room floor slabs + CSS2D labels ───────────────────────────────────────
     const slabs = analysis.model_3d?.slabs || [];
     slabs.forEach((slab, i) => {
       if (slab.width < 0.1 || slab.depth < 0.1) return;
-
-      if (!showOverlay) {
-        // Tints for subtle room distinction (Soft Blue or Green)
-        const isLivingRoom = slab.room_name?.toLowerCase().includes("living");
-        const tint = isLivingRoom ? 0x10b981 : 0x3b82f6; 
-        
-        const baseColor = new THREE.Color(SLAB_COLOR);
-        const tintColor = new THREE.Color(tint);
-        // Blend in 5% of the tint color
-        baseColor.lerp(tintColor, 0.05);
-
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(slab.width, 0.04, slab.depth),
-          new THREE.MeshStandardMaterial({
-            color: baseColor,
-            roughness: 0.8,
-            metalness: 0.1
-          })
-        );
-        mesh.position.set(slab.center_x, 0.02, slab.center_z);
-        mesh.receiveShadow = true;
-        scene.add(mesh);
-        interactable.push(mesh);
-        // add picking data
-        mesh.userData = {
-          type: "Floor Slab",
-          classification: slab.room_name || `Room ${i+1}`,
-          dimensions: `${slab.width.toFixed(2)}m × ${slab.depth.toFixed(2)}m`,
-        }
-      }
+      
+      // FRAGMENTED BOX GEOMETRY SLABS REMOVED TO PREVENT TRIANGULATION GAPS ON OPEN DOORS
 
       // CSS2D room label at centroid
       const labelDiv = document.createElement("div");
@@ -486,10 +518,10 @@ export default function ThreeViewer({ analysis, file }) {
             display: "none",
             position: "absolute",
             width: "140px",
-            background: "rgba(15, 23, 42, 0.8)",
+            background: "rgba(15, 23, 42, 0.45)",
             backdropFilter: "blur(10px)",
             WebkitBackdropFilter: "blur(10px)",
-            border: "2px solid #22d3ee",
+            border: "1px solid #22d3ee",
             boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.5)",
             borderRadius: "6px",
             padding: "10px",
